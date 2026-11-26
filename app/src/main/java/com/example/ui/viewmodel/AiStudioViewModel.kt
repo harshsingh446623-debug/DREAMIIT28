@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.data.ai.DreamiitAiRepository
+import com.example.data.model.AiMusicTrack
 import com.example.data.model.AiTitlePack
 import com.example.data.model.RepurposeSuggestion
 import com.example.data.model.SeoAnalysisPack
@@ -73,6 +74,13 @@ sealed interface AiSeoUiState {
     data class Error(val message: String) : AiSeoUiState
 }
 
+sealed interface AiMusicUiState {
+    data object Idle : AiMusicUiState
+    data object Loading : AiMusicUiState
+    data class Success(val track: AiMusicTrack) : AiMusicUiState
+    data class Error(val message: String) : AiMusicUiState
+}
+
 class AiStudioViewModel(
     private val aiRepository: DreamiitAiRepository
 ) : ViewModel() {
@@ -97,6 +105,9 @@ class AiStudioViewModel(
 
     private val _seoState = MutableStateFlow<AiSeoUiState>(AiSeoUiState.Idle)
     val seoState: StateFlow<AiSeoUiState> = _seoState.asStateFlow()
+
+    private val _musicState = MutableStateFlow<AiMusicUiState>(AiMusicUiState.Idle)
+    val musicState: StateFlow<AiMusicUiState> = _musicState.asStateFlow()
 
     fun generateTitleAndDescription(topic: String, languageCode: String, isLive: Boolean) {
         if (topic.isBlank()) {
@@ -291,6 +302,22 @@ class AiStudioViewModel(
                 throw e
             } catch (e: Exception) {
                 _seoState.value = AiSeoUiState.Error(e.localizedMessage ?: "Failed to analyze SEO.")
+            }
+        }
+    }
+
+    fun generateMusicTrack(prompt: String, genre: String, isShortClip: Boolean) {
+        viewModelScope.launch {
+            _musicState.value = AiMusicUiState.Loading
+            try {
+                val track = aiRepository.generateMusicTrack(prompt, genre, isShortClip)
+                _musicState.value = AiMusicUiState.Success(track)
+            } catch (e: TimeoutCancellationException) {
+                _musicState.value = AiMusicUiState.Error("Music composition timed out.")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _musicState.value = AiMusicUiState.Error(e.localizedMessage ?: "Music generation failed.")
             }
         }
     }

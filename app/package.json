@@ -1,0 +1,9 @@
+{
+  "name": "dreamiit28",
+  "version": "6.0.0",
+  "description": "Professional YouTube Creator & Live Streaming Engine",
+  "scripts": {
+    "build:apk": "gradle assembleRelease",
+    "build:bundle": "gradle bundleRelease"
+  }
+}

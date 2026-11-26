@@ -1011,3 +1011,12 @@ data class StreamSetupStatus(
     val readyForRealLive: Boolean = false
 )
 
+data class AiMusicTrack(
+    val title: String,
+    val genre: String,
+    val durationSec: Int,
+    val arrangementSummary: String,
+    val chords: String,
+    val modelName: String
+)
+

@@ -101,7 +101,8 @@ fun AiStudioScreen(
         strings.subtitlesTab,
         strings.transcriptionTab,
         strings.chaptersTab,
-        strings.seoAssistantTab
+        strings.seoAssistantTab,
+        strings.aiMusicTab
     )
 
     LaunchedEffect(requestedTab) {
@@ -172,6 +173,7 @@ fun AiStudioScreen(
                 onApplyChapters = onApplyChapters
             )
             5 -> AiSeoAssistantTab(aiViewModel = aiViewModel)
+            6 -> AiMusicTab(aiViewModel = aiViewModel, onExportTextArtifact = onExportTextArtifact)
         }
     }
 }

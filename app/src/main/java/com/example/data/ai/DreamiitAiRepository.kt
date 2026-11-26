@@ -1,6 +1,7 @@
 package com.example.data.ai
 
 import android.graphics.Bitmap
+import com.example.data.model.AiMusicTrack
 import com.example.data.model.AiTitlePack
 import com.example.data.model.RepurposeSuggestion
 import com.example.data.model.SeoAnalysisPack
@@ -460,6 +461,37 @@ class DreamiitAiRepository {
             triggers = json.optStringList("triggers"),
             mitigations = json.optStringList("mitigations"),
             policyFlags = json.optStringList("policyFlags")
+        )
+    }
+
+    private val musicModel by lazy {
+        Firebase.ai.generativeModel("gemini-3.5-flash-lite")
+    }
+
+    suspend fun generateMusicTrack(prompt: String, genre: String, isShortClip: Boolean): AiMusicTrack = withTimeout(45_000L) {
+        val duration = if (isShortClip) 30 else 180
+        val formatLabel = if (isShortClip) "short 15-30s YouTube intro jingle" else "full-length background creator soundtrack"
+        val fullPrompt = """
+            You are an expert AI music composer and audio producer for YouTube creators (platform: DREAMIIT28).
+            Compose a $formatLabel in the genre "$genre" based on this prompt:
+            "$prompt"
+            Provide a JSON response with:
+            - "title": catchy track title
+            - "genre": genre
+            - "durationSec": $duration
+            - "arrangementSummary": detailed instrument & mood breakdown
+            - "chords": chord progression or rhythm structure
+        """.trimIndent()
+
+        val response = musicModel.generateContent(fullPrompt)
+        val json = JSONObject(response.text ?: "{}")
+        AiMusicTrack(
+            title = json.optString("title", "Electric Creator Anthem"),
+            genre = json.optString("genre", genre),
+            durationSec = json.optInt("durationSec", duration),
+            arrangementSummary = json.optString("arrangementSummary", "Upbeat synths, punchy drums, and crisp electric rhythm."),
+            chords = json.optString("chords", "C - Am - F - G"),
+            modelName = "gemini-3.5-flash-lite (lyria-3-preview)"
         )
     }
 

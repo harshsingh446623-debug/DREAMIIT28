@@ -72,7 +72,9 @@ data class AppStrings(
     val twoStepReminderTitle: String,
     val unknownLoginAlertTitle: String,
     val activeSessionsTitle: String,
-    val autoRetryLabel: String
+    val autoRetryLabel: String,
+    val navLiveStatus: String,
+    val aiMusicTab: String
 )
 
 val EnglishStrings = AppStrings(
@@ -143,7 +145,9 @@ val EnglishStrings = AppStrings(
     twoStepReminderTitle = "Two-Step Verification (2SV)",
     unknownLoginAlertTitle = "Unknown Login Alert",
     activeSessionsTitle = "Active Sessions & Devices",
-    autoRetryLabel = "Auto Stream Retry"
+    autoRetryLabel = "Auto Stream Retry",
+    navLiveStatus = "Live Status",
+    aiMusicTab = "Music Gen"
 )
 
 val HindiStrings = AppStrings(
@@ -214,7 +218,9 @@ val HindiStrings = AppStrings(
     twoStepReminderTitle = "टू-स्टेप वेरिफिकेशन (2SV)",
     unknownLoginAlertTitle = "अज्ञात लॉगिन अलर्ट",
     activeSessionsTitle = "सक्रिय सेशन और डिवाइस",
-    autoRetryLabel = "ऑटो स्ट्रीम रीट्राई"
+    autoRetryLabel = "ऑटो स्ट्रीम रीट्राई",
+    navLiveStatus = "लाइव स्टेटस",
+    aiMusicTab = "म्यूजिक जन"
 )
 
 val LocalAppStrings = compositionLocalOf { EnglishStrings }

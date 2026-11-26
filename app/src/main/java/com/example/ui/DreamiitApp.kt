@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.LiveTv
+import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -52,6 +53,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.auth.signOut
+import com.example.data.model.LiveSchedule
 import com.example.data.model.PrivacyStatus
 import com.example.data.model.StreamingProfile
 import com.example.localization.EnglishStrings
@@ -59,6 +61,7 @@ import com.example.localization.HindiStrings
 import com.example.localization.LocalAppStrings
 import com.example.ui.components.CreateVideoBottomSheet
 import com.example.ui.components.DreamiitTopHeader
+import com.example.ui.screens.AdminControlCenterScreen
 import com.example.ui.screens.AiStudioScreen
 import com.example.ui.screens.AnalyticsOpsScreen
 import com.example.ui.screens.AuthScreen
@@ -66,6 +69,7 @@ import com.example.ui.screens.DashboardScreen
 import com.example.ui.screens.LibraryScreen
 import com.example.ui.screens.LiveHubScreen
 import com.example.ui.screens.LiveSchedulerBottomSheet
+import com.example.ui.screens.LiveStatusScreen
 import com.example.ui.screens.MediaLabScreen
 import com.example.ui.screens.NotificationsScreen
 import com.example.ui.screens.SettingsScreen
@@ -85,12 +89,14 @@ import kotlinx.coroutines.launch
 
 const val ROUTE_DASHBOARD = "dashboard"
 const val ROUTE_LIVE_HUB = "live_hub"
+const val ROUTE_LIVE_STATUS = "live_status"
 const val ROUTE_LIBRARY = "library"
 const val ROUTE_AI_STUDIO = "ai_studio"
 const val ROUTE_ANALYTICS_OPS = "analytics_ops"
 const val ROUTE_NOTIFICATIONS = "notifications"
 const val ROUTE_SETTINGS = "settings"
 const val ROUTE_MEDIA_LAB = "media_lab"
+const val ROUTE_ADMIN_CONTROL = "admin_control"
 
 @Composable
 fun DreamiitApp(
@@ -362,6 +368,7 @@ private fun AuthenticatedStudioRoot(
         val navItems = listOf(
             Triple(ROUTE_DASHBOARD, strings.navDashboard, Icons.Default.Dashboard),
             Triple(ROUTE_LIVE_HUB, strings.navLiveHub, Icons.Default.LiveTv),
+            Triple(ROUTE_LIVE_STATUS, strings.navLiveStatus, Icons.Default.MonitorHeart),
             Triple(ROUTE_LIBRARY, strings.navLibrary, Icons.Default.VideoLibrary),
             Triple(ROUTE_AI_STUDIO, strings.navAiStudio, Icons.Default.AutoAwesome),
             Triple(ROUTE_ANALYTICS_OPS, strings.navAnalytics, Icons.Default.Analytics)
@@ -598,6 +605,18 @@ private fun AuthenticatedStudioRoot(
                                     onRefreshHealth = { viewModel.refreshWorkerHealth() }
                                 )
                             }
+                            composable(ROUTE_LIVE_STATUS) {
+                                LiveStatusScreen(
+                                    schedules = schedules,
+                                    jobs = jobs,
+                                    workerHealth = workerHealth,
+                                    ytStreamHealth = ytStreamHealth,
+                                    liveConnectionAlert = liveConnectionAlert,
+                                    liveElapsedSec = liveElapsedSec,
+                                    onRefreshHealth = { viewModel.refreshWorkerHealth() },
+                                    onProbeStream = { viewModel.refreshLiveStreamHealth() }
+                                )
+                            }
                             composable(ROUTE_LIBRARY) {
                                 LibraryScreen(
                                     videos = videos,
@@ -782,6 +801,7 @@ private fun AuthenticatedStudioRoot(
                                     onDisconnectChannel = { viewModel.disconnectChannel(it) },
                                     onDisconnectOAuth = { viewModel.disconnectAllYouTubeTokens() },
                                     onUpdateSettings = { viewModel.updateUserSettings(it) },
+                                    onOpenAdminControl = { navController.navigate(ROUTE_ADMIN_CONTROL) },
                                     onSignOut = {
                                         signOut(
                                             credentialManager = credentialManager,
@@ -789,6 +809,20 @@ private fun AuthenticatedStudioRoot(
                                             onBeforeSignOut = { viewModel.prepareSecureLogout() }
                                         )
                                     },
+                                    onBack = { navController.popBackStack() }
+                                )
+                            }
+                            composable(ROUTE_ADMIN_CONTROL) {
+                                AdminControlCenterScreen(
+                                    userEmail = userEmail,
+                                    activeRole = activeRole,
+                                    channels = channels,
+                                    schedules = schedules,
+                                    videos = videos,
+                                    notifications = notifications,
+                                    workerHealth = workerHealth,
+                                    onSwitchRole = { },
+                                    onEmergencyStopLive = { sched: LiveSchedule -> viewModel.stopActiveLive(sched, emergency = true) },
                                     onBack = { navController.popBackStack() }
                                 )
                             }
