@@ -1,0 +1,14 @@
+{
+  "name": "dreamiit28-cloud-worker",
+  "version": "20.0.0",
+  "description": "DREAMIIT28 V20.0 Professional YouTube Live Streaming Worker, FFmpeg CBR Engine & Auto-Recovery Queue",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test server.test.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  }
+}

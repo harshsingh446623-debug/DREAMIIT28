@@ -1,0 +1,734 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isValidPrivacy(p) {
+      return p in ['PUBLIC', 'UNLISTED', 'PRIVATE'];
+    }
+
+    // --- Validation Helpers ---
+
+    function isValidUserSettings(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 80 &&
+             data.defaultPrivacy is string && isValidPrivacy(data.defaultPrivacy) &&
+             data.defaultResolution is string && data.defaultResolution in ['1080p', '1080p60', '720p', '480p'] &&
+             data.defaultLiveDurationMin is int && data.defaultLiveDurationMin >= 5 && data.defaultLiveDurationMin <= 720 &&
+             data.timezone is string && data.timezone.size() >= 1 && data.timezone.size() <= 64 &&
+             data.language is string && data.language in ['en', 'hi'] &&
+             (data.monthlyBudgetUsd is int || data.monthlyBudgetUsd is float) && data.monthlyBudgetUsd >= 0 && data.monthlyBudgetUsd <= 100000 &&
+             data.notificationsEnabled is bool &&
+             data.autoRecoveryEnabled is bool &&
+             (!('workerBaseUrl' in data) || (data.workerBaseUrl is string && data.workerBaseUrl.size() <= 300)) &&
+             (!('youtubeOAuthClientId' in data) || (data.youtubeOAuthClientId is string && data.youtubeOAuthClientId.size() <= 200)) &&
+             (!('activeChannelId' in data) || (data.activeChannelId is string && data.activeChannelId.size() <= 128)) &&
+             (!('lastLoginDevice' in data) || (data.lastLoginDevice is string && data.lastLoginDevice.size() <= 120)) &&
+             (!('dashboardWidgets' in data) || (data.dashboardWidgets is list && data.dashboardWidgets.size() <= 24)) &&
+             (!('hiddenWidgets' in data) || (data.hiddenWidgets is list && data.hiddenWidgets.size() <= 24)) &&
+             (!('autoBackupEnabled' in data) || data.autoBackupEnabled is bool) &&
+             (!('autoBackupFrequency' in data) || (data.autoBackupFrequency is string && data.autoBackupFrequency in ['OFF', 'DAILY', 'WEEKLY'])) &&
+             (!('storageQuotaGb' in data) || ((data.storageQuotaGb is int || data.storageQuotaGb is float) && data.storageQuotaGb >= 1 && data.storageQuotaGb <= 5000)) &&
+             (!('storageAlert80Sent' in data) || data.storageAlert80Sent is bool) &&
+             (!('storageAlert90Sent' in data) || data.storageAlert90Sent is bool) &&
+             (!('activeRolePreview' in data) || (data.activeRolePreview is string && data.activeRolePreview in ['OWNER', 'EDITOR', 'VIEWER'])) &&
+             (!('twoFactorConfirmed' in data) || data.twoFactorConfirmed is bool) &&
+             (!('twoFactorRemindedAtMs' in data) || (data.twoFactorRemindedAtMs is int && data.twoFactorRemindedAtMs >= 0)) &&
+             (!('knownDevices' in data) || (data.knownDevices is list && data.knownDevices.size() <= 20)) &&
+             (!('billingConnectedUrl' in data) || (data.billingConnectedUrl is string && data.billingConnectedUrl.size() <= 300)) &&
+             (!('apiQuotaDailyLimit' in data) || (data.apiQuotaDailyLimit is int && data.apiQuotaDailyLimit >= 100 && data.apiQuotaDailyLimit <= 1000000)) &&
+             (!('apiUnitsUsedToday' in data) || (data.apiUnitsUsedToday is int && data.apiUnitsUsedToday >= 0)) &&
+             (!('apiQuotaResetDate' in data) || (data.apiQuotaResetDate is string && data.apiQuotaResetDate.size() <= 20)) &&
+             (!('autoStreamRetryEnabled' in data) || data.autoStreamRetryEnabled is bool) &&
+             (!('themeMode' in data) || (data.themeMode is string && data.themeMode in ['DARK', 'LIGHT'])) &&
+             (!('infraCostApproved' in data) || data.infraCostApproved is bool) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidYouTubeChannel(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.channelId is string && data.channelId.size() >= 1 && data.channelId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.subscriberCount is int && data.subscriberCount >= 0 &&
+             data.viewCount is int && data.viewCount >= 0 &&
+             data.videoCount is int && data.videoCount >= 0 &&
+             data.activeChannel is bool &&
+             (!('handle' in data) || (data.handle is string && data.handle.size() <= 80)) &&
+             (!('thumbnailUrl' in data) || (data.thumbnailUrl is string && data.thumbnailUrl.size() <= 500)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCloudVideo(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.channelId is string && data.channelId.size() >= 1 && data.channelId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             data.description is string && data.description.size() <= 5000 &&
+             data.categoryId is string && data.categoryId.size() >= 1 && data.categoryId.size() <= 20 &&
+             data.privacyStatus is string && isValidPrivacy(data.privacyStatus) &&
+             data.sourceWidth is int && data.sourceWidth >= 0 && data.sourceWidth <= 7680 &&
+             data.sourceHeight is int && data.sourceHeight >= 0 && data.sourceHeight <= 4320 &&
+             data.sourceFps is int && data.sourceFps >= 0 && data.sourceFps <= 240 &&
+             data.durationSec is int && data.durationSec >= 0 && data.durationSec <= 86400 &&
+             data.fileSizeBytes is int && data.fileSizeBytes >= 0 &&
+             data.uploadStatus is string && data.uploadStatus in ['QUEUED', 'UPLOADING', 'READY', 'UPLOADED', 'FAILED'] &&
+             data.qualityVerified1080p is bool &&
+             (!('tags' in data) || (data.tags is list && data.tags.size() <= 15 && (data.tags.size() == 0 || data.tags[0] is string))) &&
+             (!('localUri' in data) || (data.localUri is string && data.localUri.size() <= 500)) &&
+             (!('storageUrl' in data) || (data.storageUrl is string && data.storageUrl.size() <= 500)) &&
+             (!('thumbnailUrl' in data) || (data.thumbnailUrl is string && data.thumbnailUrl.size() <= 500)) &&
+             (!('youtubeVideoId' in data) || (data.youtubeVideoId is string && data.youtubeVideoId.size() <= 64)) &&
+             (!('qualityWarning' in data) || (data.qualityWarning is string && data.qualityWarning.size() <= 300)) &&
+             (!('transcriptText' in data) || (data.transcriptText is string && data.transcriptText.size() <= 40000)) &&
+             (!('subtitlesEnSrt' in data) || (data.subtitlesEnSrt is string && data.subtitlesEnSrt.size() <= 40000)) &&
+             (!('subtitlesHiSrt' in data) || (data.subtitlesHiSrt is string && data.subtitlesHiSrt.size() <= 40000)) &&
+             (!('chaptersText' in data) || (data.chaptersText is string && data.chaptersText.size() <= 10000)) &&
+             (!('clipSourceVideoId' in data) || (data.clipSourceVideoId is string && data.clipSourceVideoId.size() <= 128)) &&
+             (!('audioDbPeak' in data) || ((data.audioDbPeak is int || data.audioDbPeak is float) && data.audioDbPeak >= -120 && data.audioDbPeak <= 24)) &&
+             (!('audioNormalized' in data) || data.audioNormalized is bool) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidLiveSchedule(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.channelId is string && data.channelId.size() >= 1 && data.channelId.size() <= 128 &&
+             data.videoId is string && data.videoId.size() >= 1 && data.videoId.size() <= 128 &&
+             data.videoTitle is string && data.videoTitle.size() >= 1 && data.videoTitle.size() <= 150 &&
+             data.liveTitle is string && data.liveTitle.size() >= 1 && data.liveTitle.size() <= 150 &&
+             data.liveDescription is string && data.liveDescription.size() <= 5000 &&
+             data.privacyStatus is string && isValidPrivacy(data.privacyStatus) &&
+             data.scheduledStartIso is string && data.scheduledStartIso.size() >= 1 && data.scheduledStartIso.size() <= 64 &&
+             data.scheduledStartEpochMs is int && data.scheduledStartEpochMs > 0 &&
+             data.timezone is string && data.timezone.size() >= 1 && data.timezone.size() <= 64 &&
+             data.recurrence is string && data.recurrence in ['ONCE', 'DAILY', 'WEEKLY'] &&
+             data.targetProfile is string && data.targetProfile in ['1080p30_6M', '1080p60_9M', '720p30_4M', '480p30_2M'] &&
+             data.status is string && data.status in ['SCHEDULED', 'PREPARING', 'LIVE', 'COMPLETED', 'CANCELLED', 'FAILED'] &&
+             data.retryCount is int && data.retryCount >= 0 && data.retryCount <= 10 &&
+             data.maxRetries is int && data.maxRetries >= 0 && data.maxRetries <= 10 &&
+             data.autoEndOnFinish is bool &&
+             (!('thumbnailUrl' in data) || (data.thumbnailUrl is string && data.thumbnailUrl.size() <= 500)) &&
+             (!('youtubeBroadcastId' in data) || (data.youtubeBroadcastId is string && data.youtubeBroadcastId.size() <= 128)) &&
+             (!('youtubeStreamId' in data) || (data.youtubeStreamId is string && data.youtubeStreamId.size() <= 128)) &&
+             (!('youtubeWatchUrl' in data) || (data.youtubeWatchUrl is string && data.youtubeWatchUrl.size() <= 300)) &&
+             (!('rtmpsIngestUrl' in data) || (data.rtmpsIngestUrl is string && data.rtmpsIngestUrl.size() <= 300)) &&
+             (!('lastError' in data) || (data.lastError is string && data.lastError.size() <= 500)) &&
+             (!('workerJobId' in data) || (data.workerJobId is string && data.workerJobId.size() <= 128)) &&
+             (!('maxDurationMinutes' in data) || (data.maxDurationMinutes is int && data.maxDurationMinutes >= 60 && data.maxDurationMinutes <= 180)) &&
+             (!('repeatPlayback' in data) || data.repeatPlayback is bool) &&
+             (!('pausedState' in data) || data.pausedState is bool) &&
+             (!('lastSafePositionSec' in data) || (data.lastSafePositionSec is int && data.lastSafePositionSec >= 0 && data.lastSafePositionSec <= 86400)) &&
+             (!('droppedFrames' in data) || (data.droppedFrames is int && data.droppedFrames >= 0)) &&
+             (!('currentBitrateKbps' in data) || (data.currentBitrateKbps is int && data.currentBitrateKbps >= 0 && data.currentBitrateKbps <= 50000)) &&
+             (!('youtubeConfirmedLive' in data) || data.youtubeConfirmedLive is bool) &&
+             (!('recoveryState' in data) || (data.recoveryState is string && data.recoveryState.size() <= 120)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidLivePlaylist(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.channelId is string && data.channelId.size() >= 1 && data.channelId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.videoIds is list && data.videoIds.size() <= 50 && (data.videoIds.size() == 0 || data.videoIds[0] is string) &&
+             data.videoTitles is list && data.videoTitles.size() <= 50 && (data.videoTitles.size() == 0 || data.videoTitles[0] is string) &&
+             data.endBroadcastOnFinish is bool &&
+             data.loopPlaylist is bool &&
+             data.currentIndex is int && data.currentIndex >= 0 && data.currentIndex <= 50 &&
+             data.status is string && data.status in ['IDLE', 'PLAYING', 'COMPLETED', 'FAILED'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidWorkerJob(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.scheduleId is string && data.scheduleId.size() >= 1 && data.scheduleId.size() <= 128 &&
+             data.jobType is string && data.jobType.size() >= 1 && data.jobType.size() <= 60 &&
+             data.status is string && data.status in ['PENDING', 'RUNNING', 'COMPLETED', 'RETRYING', 'FAILED'] &&
+             data.attemptNumber is int && data.attemptNumber >= 1 && data.attemptNumber <= 10 &&
+             data.message is string && data.message.size() <= 400 &&
+             (data.cpuPercent is int || data.cpuPercent is float) && data.cpuPercent >= 0 && data.cpuPercent <= 100 &&
+             data.memoryMb is int && data.memoryMb >= 0 && data.memoryMb <= 65536 &&
+             data.bitrateKbps is int && data.bitrateKbps >= 0 && data.bitrateKbps <= 50000 &&
+             data.droppedFrames is int && data.droppedFrames >= 0 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidNotification(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.eventType is string && data.eventType.size() >= 1 && data.eventType.size() <= 64 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.body is string && data.body.size() >= 1 && data.body.size() <= 500 &&
+             data.severity is string && data.severity in ['INFO', 'SUCCESS', 'WARNING', 'ERROR'] &&
+             data.readState is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidAuditLog(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.eventType is string && data.eventType.size() >= 1 && data.eventType.size() <= 64 &&
+             data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 120 &&
+             data.status is string && data.status.size() >= 1 && data.status.size() <= 40 &&
+             data.details is string && data.details.size() <= 400 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidBackupRecord(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.label is string && data.label.size() >= 1 && data.label.size() <= 120 &&
+             data.videoCount is int && data.videoCount >= 0 &&
+             data.scheduleCount is int && data.scheduleCount >= 0 &&
+             data.playlistCount is int && data.playlistCount >= 0 &&
+             data.retentionDays is int && data.retentionDays >= 1 && data.retentionDays <= 3650 &&
+             data.snapshotSummary is string && data.snapshotSummary.size() <= 2000 &&
+             (!('settingsJson' in data) || (data.settingsJson is string && data.settingsJson.size() <= 8000)) &&
+             (!('schedulesJson' in data) || (data.schedulesJson is string && data.schedulesJson.size() <= 32000)) &&
+             (!('checksumSha256' in data) || (data.checksumSha256 is string && data.checksumSha256.size() <= 128)) &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidUploadSchedule(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.channelId is string && data.channelId.size() >= 1 && data.channelId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             data.description is string && data.description.size() <= 5000 &&
+             data.categoryId is string && data.categoryId.size() >= 1 && data.categoryId.size() <= 20 &&
+             data.privacyStatus is string && isValidPrivacy(data.privacyStatus) &&
+             data.scheduledPublishIso is string && data.scheduledPublishIso.size() >= 1 && data.scheduledPublishIso.size() <= 64 &&
+             data.scheduledPublishEpochMs is int && data.scheduledPublishEpochMs > 0 &&
+             data.timezone is string && data.timezone.size() >= 1 && data.timezone.size() <= 64 &&
+             data.status is string && data.status in ['SCHEDULED', 'UPLOADING', 'PUBLISHED', 'FAILED', 'CANCELLED'] &&
+             (!('tags' in data) || (data.tags is list && data.tags.size() <= 15)) &&
+             (!('localUri' in data) || (data.localUri is string && data.localUri.size() <= 500)) &&
+             (!('youtubeVideoId' in data) || (data.youtubeVideoId is string && data.youtubeVideoId.size() <= 64)) &&
+             (!('lastError' in data) || (data.lastError is string && data.lastError.size() <= 500)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidTeamMember(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.memberName is string && data.memberName.size() >= 1 && data.memberName.size() <= 80 &&
+             data.memberEmail is string && data.memberEmail.size() >= 3 && data.memberEmail.size() <= 150 &&
+             data.role is string && data.role in ['OWNER', 'EDITOR', 'VIEWER'] &&
+             data.activeMember is bool &&
+             data.addedBy is string && data.addedBy.size() >= 1 && data.addedBy.size() <= 120 &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 300)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidActivityLog(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.category is string && data.category in ['AUTH', 'UPLOAD', 'LIVE', 'ACCOUNT', 'TEAM', 'MEDIA', 'BACKUP', 'SECURITY', 'CLOUD', 'COPYRIGHT'] &&
+             data.action is string && data.action.size() >= 1 && data.action.size() <= 120 &&
+             data.actorName is string && data.actorName.size() >= 1 && data.actorName.size() <= 80 &&
+             data.actorRole is string && data.actorRole in ['OWNER', 'EDITOR', 'VIEWER', 'SYSTEM'] &&
+             data.details is string && data.details.size() <= 500 &&
+             data.timestampEpochMs is int && data.timestampEpochMs > 0 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    function isValidCompetitorChannel(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.channelId is string && data.channelId.size() >= 1 && data.channelId.size() <= 128 &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.subscriberCount is int && data.subscriberCount >= 0 &&
+             data.viewCount is int && data.viewCount >= 0 &&
+             data.videoCount is int && data.videoCount >= 0 &&
+             data.lastSyncedEpochMs is int && data.lastSyncedEpochMs > 0 &&
+             (!('handle' in data) || (data.handle is string && data.handle.size() <= 80)) &&
+             (!('thumbnailUrl' in data) || (data.thumbnailUrl is string && data.thumbnailUrl.size() <= 500)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidUserSession(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 120 &&
+             data.platform is string && data.platform.size() >= 1 && data.platform.size() <= 60 &&
+             data.sessionTokenHash is string && data.sessionTokenHash.size() >= 8 && data.sessionTokenHash.size() <= 128 &&
+             data.lastActiveEpochMs is int && data.lastActiveEpochMs > 0 &&
+             data.revoked is bool &&
+             data.trustedDevice is bool &&
+             (!('networkHint' in data) || (data.networkHint is string && data.networkHint.size() <= 120)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidCopyrightReport(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.videoId is string && data.videoId.size() >= 1 && data.videoId.size() <= 128 &&
+             data.videoTitle is string && data.videoTitle.size() >= 1 && data.videoTitle.size() <= 150 &&
+             data.riskLevel is string && data.riskLevel in ['LOW', 'MEDIUM', 'HIGH'] &&
+             data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 1500 &&
+             data.triggers is list && data.triggers.size() <= 15 &&
+             data.mitigations is list && data.mitigations.size() <= 15 &&
+             data.policyFlags is list && data.policyFlags.size() <= 15 &&
+             isValidTimestamp(data.createdAt);
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) && isValidId(userId) &&
+                       incoming().keys().hasAll([
+                         'userId', 'ownerName', 'defaultPrivacy', 'defaultResolution',
+                         'defaultLiveDurationMin', 'timezone', 'language', 'monthlyBudgetUsd',
+                         'notificationsEnabled', 'autoRecoveryEnabled', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'userId', 'ownerName', 'defaultPrivacy', 'defaultResolution',
+                         'defaultLiveDurationMin', 'timezone', 'language', 'monthlyBudgetUsd',
+                         'notificationsEnabled', 'autoRecoveryEnabled', 'workerBaseUrl',
+                         'youtubeOAuthClientId', 'activeChannelId', 'lastLoginDevice',
+                         'dashboardWidgets', 'hiddenWidgets', 'autoBackupEnabled', 'autoBackupFrequency',
+                         'storageQuotaGb', 'storageAlert80Sent', 'storageAlert90Sent', 'activeRolePreview',
+                         'twoFactorConfirmed', 'twoFactorRemindedAtMs', 'knownDevices', 'billingConnectedUrl',
+                         'apiQuotaDailyLimit', 'apiUnitsUsedToday', 'apiQuotaResetDate', 'autoStreamRetryEnabled',
+                         'themeMode', 'infraCostApproved',
+                         'createdAt', 'updatedAt'
+                       ]) &&
+                       isValidUserSettings(incoming(), userId);
+
+      allow update: if isOwner(userId) && isValidId(userId) &&
+                       isValidUserSettings(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'ownerName', 'defaultPrivacy', 'defaultResolution',
+                         'defaultLiveDurationMin', 'timezone', 'language', 'monthlyBudgetUsd',
+                         'notificationsEnabled', 'autoRecoveryEnabled', 'workerBaseUrl',
+                         'youtubeOAuthClientId', 'activeChannelId', 'lastLoginDevice',
+                         'dashboardWidgets', 'hiddenWidgets', 'autoBackupEnabled', 'autoBackupFrequency',
+                         'storageQuotaGb', 'storageAlert80Sent', 'storageAlert90Sent', 'activeRolePreview',
+                         'twoFactorConfirmed', 'twoFactorRemindedAtMs', 'knownDevices', 'billingConnectedUrl',
+                         'apiQuotaDailyLimit', 'apiUnitsUsedToday', 'apiQuotaResetDate', 'autoStreamRetryEnabled',
+                         'themeMode', 'infraCostApproved',
+                         'updatedAt'
+                       ]);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /channels/{channelId} {
+        allow get: if isOwner(userId) && isValidId(channelId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(channelId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'channelId', 'title', 'subscriberCount',
+                           'viewCount', 'videoCount', 'activeChannel', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'channelId', 'title', 'handle', 'thumbnailUrl',
+                           'subscriberCount', 'viewCount', 'videoCount', 'activeChannel',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidYouTubeChannel(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(channelId) &&
+                         isValidYouTubeChannel(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().channelId == existing().channelId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'title', 'handle', 'thumbnailUrl', 'subscriberCount',
+                           'viewCount', 'videoCount', 'activeChannel', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(channelId);
+      }
+
+      match /videos/{videoId} {
+        allow get: if isOwner(userId) && isValidId(videoId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(videoId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'channelId', 'title', 'description', 'categoryId',
+                           'privacyStatus', 'sourceWidth', 'sourceHeight', 'sourceFps',
+                           'durationSec', 'fileSizeBytes', 'uploadStatus', 'qualityVerified1080p',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'channelId', 'title', 'description', 'categoryId',
+                           'privacyStatus', 'sourceWidth', 'sourceHeight', 'sourceFps',
+                           'durationSec', 'fileSizeBytes', 'uploadStatus', 'qualityVerified1080p',
+                           'tags', 'localUri', 'storageUrl', 'thumbnailUrl', 'youtubeVideoId',
+                           'qualityWarning', 'transcriptText', 'subtitlesEnSrt', 'subtitlesHiSrt',
+                           'chaptersText', 'clipSourceVideoId', 'audioDbPeak', 'audioNormalized',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidCloudVideo(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(videoId) &&
+                         isValidCloudVideo(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'channelId', 'title', 'description', 'categoryId',
+                           'privacyStatus', 'sourceWidth', 'sourceHeight', 'sourceFps',
+                           'durationSec', 'fileSizeBytes', 'uploadStatus', 'qualityVerified1080p',
+                           'tags', 'localUri', 'storageUrl',
+                           'thumbnailUrl', 'youtubeVideoId', 'qualityWarning',
+                           'transcriptText', 'subtitlesEnSrt', 'subtitlesHiSrt',
+                           'chaptersText', 'audioDbPeak', 'audioNormalized', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(videoId);
+      }
+
+      match /schedules/{scheduleId} {
+        allow get: if isOwner(userId) && isValidId(scheduleId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(scheduleId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'channelId', 'videoId', 'videoTitle', 'liveTitle',
+                           'liveDescription', 'privacyStatus', 'scheduledStartIso',
+                           'scheduledStartEpochMs', 'timezone', 'recurrence', 'targetProfile',
+                           'status', 'retryCount', 'maxRetries', 'autoEndOnFinish',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'channelId', 'videoId', 'videoTitle', 'liveTitle',
+                           'liveDescription', 'privacyStatus', 'scheduledStartIso',
+                           'scheduledStartEpochMs', 'timezone', 'recurrence', 'targetProfile',
+                           'status', 'retryCount', 'maxRetries', 'autoEndOnFinish',
+                           'thumbnailUrl', 'youtubeBroadcastId', 'youtubeStreamId',
+                           'youtubeWatchUrl', 'rtmpsIngestUrl', 'lastError', 'workerJobId',
+                           'maxDurationMinutes', 'repeatPlayback', 'pausedState', 'lastSafePositionSec',
+                           'droppedFrames', 'currentBitrateKbps', 'youtubeConfirmedLive', 'recoveryState',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidLiveSchedule(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(scheduleId) &&
+                         isValidLiveSchedule(incoming(), userId) &&
+                         !(existing().status in ['COMPLETED', 'CANCELLED']) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'videoId', 'videoTitle',
+                           'liveTitle', 'liveDescription', 'privacyStatus', 'scheduledStartIso',
+                           'scheduledStartEpochMs', 'timezone', 'recurrence', 'targetProfile',
+                           'status', 'retryCount', 'autoEndOnFinish', 'thumbnailUrl',
+                           'youtubeBroadcastId', 'youtubeStreamId', 'youtubeWatchUrl',
+                           'rtmpsIngestUrl', 'lastError', 'workerJobId',
+                           'maxDurationMinutes', 'repeatPlayback', 'pausedState', 'lastSafePositionSec',
+                           'droppedFrames', 'currentBitrateKbps', 'youtubeConfirmedLive', 'recoveryState',
+                           'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(scheduleId) && existing().status != 'LIVE';
+      }
+
+      match /playlists/{playlistId} {
+        allow get: if isOwner(userId) && isValidId(playlistId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(playlistId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'channelId', 'title', 'videoIds', 'videoTitles',
+                           'endBroadcastOnFinish', 'loopPlaylist', 'currentIndex', 'status',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'channelId', 'title', 'videoIds', 'videoTitles',
+                           'endBroadcastOnFinish', 'loopPlaylist', 'currentIndex', 'status',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidLivePlaylist(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(playlistId) &&
+                         isValidLivePlaylist(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'title', 'videoIds', 'videoTitles', 'endBroadcastOnFinish',
+                           'loopPlaylist', 'currentIndex', 'status', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(playlistId);
+      }
+
+      match /jobs/{jobId} {
+        allow get: if isOwner(userId) && isValidId(jobId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(jobId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'scheduleId', 'jobType', 'status', 'attemptNumber',
+                           'message', 'cpuPercent', 'memoryMb', 'bitrateKbps',
+                           'droppedFrames', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'scheduleId', 'jobType', 'status', 'attemptNumber',
+                           'message', 'cpuPercent', 'memoryMb', 'bitrateKbps',
+                           'droppedFrames', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidWorkerJob(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(jobId) &&
+                         isValidWorkerJob(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().scheduleId == existing().scheduleId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'status', 'attemptNumber', 'message', 'cpuPercent',
+                           'memoryMb', 'bitrateKbps', 'droppedFrames', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(jobId);
+      }
+
+      match /notifications/{notificationId} {
+        allow get: if isOwner(userId) && isValidId(notificationId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(notificationId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'eventType', 'title', 'body', 'severity',
+                           'readState', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'eventType', 'title', 'body', 'severity',
+                           'readState', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidNotification(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(notificationId) &&
+                         isValidNotification(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['readState', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(notificationId);
+      }
+
+      match /auditLogs/{logId} {
+        allow get: if isOwner(userId) && isValidId(logId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(logId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'eventType', 'deviceName', 'status', 'details', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'eventType', 'deviceName', 'status', 'details', 'createdAt'
+                         ]) &&
+                         isValidAuditLog(incoming(), userId);
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(logId);
+      }
+
+      match /backups/{backupId} {
+        allow get: if isOwner(userId) && isValidId(backupId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(backupId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'label', 'videoCount', 'scheduleCount',
+                           'playlistCount', 'retentionDays', 'snapshotSummary', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'label', 'videoCount', 'scheduleCount',
+                           'playlistCount', 'retentionDays', 'snapshotSummary',
+                           'settingsJson', 'schedulesJson', 'checksumSha256', 'createdAt'
+                         ]) &&
+                         isValidBackupRecord(incoming(), userId);
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(backupId);
+      }
+
+      match /uploadSchedules/{uploadId} {
+        allow get: if isOwner(userId) && isValidId(uploadId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(uploadId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'channelId', 'title', 'description', 'categoryId',
+                           'privacyStatus', 'scheduledPublishIso', 'scheduledPublishEpochMs',
+                           'timezone', 'status', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'channelId', 'title', 'description', 'categoryId',
+                           'privacyStatus', 'tags', 'localUri', 'scheduledPublishIso',
+                           'scheduledPublishEpochMs', 'timezone', 'status', 'youtubeVideoId',
+                           'lastError', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidUploadSchedule(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(uploadId) &&
+                         isValidUploadSchedule(incoming(), userId) &&
+                         !(existing().status in ['PUBLISHED', 'CANCELLED']) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'title', 'description', 'categoryId', 'privacyStatus', 'tags',
+                           'scheduledPublishIso', 'scheduledPublishEpochMs', 'timezone',
+                           'status', 'youtubeVideoId', 'lastError', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(uploadId);
+      }
+
+      match /teamMembers/{memberId} {
+        allow get: if isOwner(userId) && isValidId(memberId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(memberId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'memberName', 'memberEmail', 'role',
+                           'activeMember', 'addedBy', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'memberName', 'memberEmail', 'role',
+                           'activeMember', 'addedBy', 'notes', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidTeamMember(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(memberId) &&
+                         isValidTeamMember(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'memberName', 'role', 'activeMember', 'notes', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(memberId);
+      }
+
+      match /activityLogs/{logId} {
+        allow get: if isOwner(userId) && isValidId(logId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(logId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'category', 'action', 'actorName',
+                           'actorRole', 'details', 'timestampEpochMs', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'category', 'action', 'actorName',
+                           'actorRole', 'details', 'timestampEpochMs', 'createdAt'
+                         ]) &&
+                         isValidActivityLog(incoming(), userId);
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(logId);
+      }
+
+      match /competitors/{competitorId} {
+        allow get: if isOwner(userId) && isValidId(competitorId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(competitorId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'channelId', 'title', 'subscriberCount',
+                           'viewCount', 'videoCount', 'lastSyncedEpochMs', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'channelId', 'title', 'handle', 'thumbnailUrl',
+                           'subscriberCount', 'viewCount', 'videoCount', 'lastSyncedEpochMs',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidCompetitorChannel(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(competitorId) &&
+                         isValidCompetitorChannel(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().channelId == existing().channelId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'title', 'handle', 'thumbnailUrl', 'subscriberCount',
+                           'viewCount', 'videoCount', 'lastSyncedEpochMs', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(competitorId);
+      }
+
+      match /sessions/{sessionId} {
+        allow get: if isOwner(userId) && isValidId(sessionId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(sessionId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'deviceName', 'platform', 'sessionTokenHash',
+                           'lastActiveEpochMs', 'revoked', 'trustedDevice', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'deviceName', 'platform', 'sessionTokenHash',
+                           'lastActiveEpochMs', 'revoked', 'trustedDevice', 'networkHint',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidUserSession(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(sessionId) &&
+                         isValidUserSession(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().sessionTokenHash == existing().sessionTokenHash &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'lastActiveEpochMs', 'revoked', 'trustedDevice', 'networkHint', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(sessionId);
+      }
+
+      match /copyrightReports/{reportId} {
+        allow get: if isOwner(userId) && isValidId(reportId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(reportId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'videoId', 'videoTitle', 'riskLevel',
+                           'summary', 'triggers', 'mitigations', 'policyFlags', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'videoId', 'videoTitle', 'riskLevel',
+                           'summary', 'triggers', 'mitigations', 'policyFlags', 'createdAt'
+                         ]) &&
+                         isValidCopyrightReport(incoming(), userId);
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(reportId);
+      }
+    }
+  }
+}

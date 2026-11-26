@@ -1,0 +1,453 @@
+{
+  "entities": {
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "Creator platform configuration, preferences, and budget limits for a signed-in user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the owner." },
+        "ownerName": { "type": "string", "description": "Creator display name (e.g., Harsh Singh)." },
+        "defaultPrivacy": { "type": "string", "enum": ["PUBLIC", "UNLISTED", "PRIVATE"] },
+        "defaultResolution": { "type": "string", "enum": ["1080p", "1080p60", "720p", "480p"] },
+        "defaultLiveDurationMin": { "type": "integer", "description": "Default live stream duration in minutes." },
+        "timezone": { "type": "string", "description": "IANA timezone identifier." },
+        "language": { "type": "string", "enum": ["en", "hi"] },
+        "monthlyBudgetUsd": { "type": "number", "description": "Monthly cloud spending alert limit in USD." },
+        "notificationsEnabled": { "type": "boolean" },
+        "autoRecoveryEnabled": { "type": "boolean" },
+        "workerBaseUrl": { "type": "string", "description": "Optional external Cloud Streaming Worker base URL." },
+        "youtubeOAuthClientId": { "type": "string", "description": "Optional YouTube OAuth 2.0 Web/Android Client ID." },
+        "activeChannelId": { "type": "string", "description": "Currently selected YouTube channel ID." },
+        "lastLoginDevice": { "type": "string", "description": "Device model of the most recent login." },
+        "dashboardWidgets": { "type": "array", "description": "Ordered widget keys for Custom Dashboard." },
+        "hiddenWidgets": { "type": "array", "description": "Disabled widget keys on Custom Dashboard." },
+        "autoBackupEnabled": { "type": "boolean" },
+        "autoBackupFrequency": { "type": "string", "enum": ["OFF", "DAILY", "WEEKLY"] },
+        "storageQuotaGb": { "type": "number" },
+        "storageAlert80Sent": { "type": "boolean" },
+        "storageAlert90Sent": { "type": "boolean" },
+        "activeRolePreview": { "type": "string", "enum": ["OWNER", "EDITOR", "VIEWER"] },
+        "twoFactorConfirmed": { "type": "boolean" },
+        "twoFactorRemindedAtMs": { "type": "integer" },
+        "knownDevices": { "type": "array" },
+        "billingConnectedUrl": { "type": "string" },
+        "apiQuotaDailyLimit": { "type": "integer" },
+        "apiUnitsUsedToday": { "type": "integer" },
+        "apiQuotaResetDate": { "type": "string" },
+        "autoStreamRetryEnabled": { "type": "boolean" },
+        "themeMode": { "type": "string", "enum": ["DARK", "LIGHT"] },
+        "infraCostApproved": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": [
+        "userId", "ownerName", "defaultPrivacy", "defaultResolution",
+        "defaultLiveDurationMin", "timezone", "language", "monthlyBudgetUsd",
+        "notificationsEnabled", "autoRecoveryEnabled", "createdAt", "updatedAt"
+      ]
+    },
+    "YouTubeChannel": {
+      "title": "YouTubeChannel",
+      "description": "Authorized YouTube channel connected via official Google OAuth 2.0.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "channelId": { "type": "string" },
+        "title": { "type": "string" },
+        "handle": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "subscriberCount": { "type": "integer" },
+        "viewCount": { "type": "integer" },
+        "videoCount": { "type": "integer" },
+        "activeChannel": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "channelId", "title", "subscriberCount",
+        "viewCount", "videoCount", "activeChannel", "createdAt", "updatedAt"
+      ]
+    },
+    "CloudVideo": {
+      "title": "CloudVideo",
+      "description": "Uploaded or queued video metadata in the Cloud Video Library.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "channelId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "privacyStatus": { "type": "string", "enum": ["PUBLIC", "UNLISTED", "PRIVATE"] },
+        "sourceWidth": { "type": "integer" },
+        "sourceHeight": { "type": "integer" },
+        "sourceFps": { "type": "integer" },
+        "durationSec": { "type": "integer" },
+        "fileSizeBytes": { "type": "integer" },
+        "uploadStatus": { "type": "string", "enum": ["QUEUED", "UPLOADING", "READY", "UPLOADED", "FAILED"] },
+        "qualityVerified1080p": { "type": "boolean" },
+        "tags": { "type": "array" },
+        "localUri": { "type": "string" },
+        "storageUrl": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "youtubeVideoId": { "type": "string" },
+        "qualityWarning": { "type": "string" },
+        "transcriptText": { "type": "string" },
+        "subtitlesEnSrt": { "type": "string" },
+        "subtitlesHiSrt": { "type": "string" },
+        "chaptersText": { "type": "string" },
+        "clipSourceVideoId": { "type": "string" },
+        "audioDbPeak": { "type": "number" },
+        "audioNormalized": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "channelId", "title", "description", "categoryId",
+        "privacyStatus", "sourceWidth", "sourceHeight", "sourceFps",
+        "durationSec", "fileSizeBytes", "uploadStatus", "qualityVerified1080p",
+        "createdAt", "updatedAt"
+      ]
+    },
+    "LiveSchedule": {
+      "title": "LiveSchedule",
+      "description": "Scheduled or active automated 1080p RTMPS YouTube Live broadcast.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "channelId": { "type": "string" },
+        "videoId": { "type": "string" },
+        "videoTitle": { "type": "string" },
+        "liveTitle": { "type": "string" },
+        "liveDescription": { "type": "string" },
+        "privacyStatus": { "type": "string", "enum": ["PUBLIC", "UNLISTED", "PRIVATE"] },
+        "scheduledStartIso": { "type": "string" },
+        "scheduledStartEpochMs": { "type": "integer" },
+        "timezone": { "type": "string" },
+        "recurrence": { "type": "string", "enum": ["ONCE", "DAILY", "WEEKLY"] },
+        "targetProfile": { "type": "string", "enum": ["1080p30_6M", "1080p60_9M", "720p30_4M", "480p30_2M"] },
+        "status": { "type": "string", "enum": ["SCHEDULED", "PREPARING", "LIVE", "COMPLETED", "CANCELLED", "FAILED"] },
+        "retryCount": { "type": "integer" },
+        "maxRetries": { "type": "integer" },
+        "autoEndOnFinish": { "type": "boolean" },
+        "thumbnailUrl": { "type": "string" },
+        "youtubeBroadcastId": { "type": "string" },
+        "youtubeStreamId": { "type": "string" },
+        "youtubeWatchUrl": { "type": "string" },
+        "rtmpsIngestUrl": { "type": "string" },
+        "lastError": { "type": "string" },
+        "workerJobId": { "type": "string" },
+        "maxDurationMinutes": { "type": "integer" },
+        "repeatPlayback": { "type": "boolean" },
+        "pausedState": { "type": "boolean" },
+        "lastSafePositionSec": { "type": "integer" },
+        "droppedFrames": { "type": "integer" },
+        "currentBitrateKbps": { "type": "integer" },
+        "youtubeConfirmedLive": { "type": "boolean" },
+        "recoveryState": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "channelId", "videoId", "videoTitle", "liveTitle",
+        "liveDescription", "privacyStatus", "scheduledStartIso", "scheduledStartEpochMs",
+        "timezone", "recurrence", "targetProfile", "status", "retryCount",
+        "maxRetries", "autoEndOnFinish", "createdAt", "updatedAt"
+      ]
+    },
+    "LivePlaylist": {
+      "title": "LivePlaylist",
+      "description": "Ordered sequential playback queue for automated live streaming.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "channelId": { "type": "string" },
+        "title": { "type": "string" },
+        "videoIds": { "type": "array" },
+        "videoTitles": { "type": "array" },
+        "endBroadcastOnFinish": { "type": "boolean" },
+        "loopPlaylist": { "type": "boolean" },
+        "currentIndex": { "type": "integer" },
+        "status": { "type": "string", "enum": ["IDLE", "PLAYING", "COMPLETED", "FAILED"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "channelId", "title", "videoIds", "videoTitles",
+        "endBroadcastOnFinish", "loopPlaylist", "currentIndex", "status",
+        "createdAt", "updatedAt"
+      ]
+    },
+    "WorkerJob": {
+      "title": "WorkerJob",
+      "description": "Server-side streaming worker job execution and telemetry log.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "scheduleId": { "type": "string" },
+        "jobType": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "RUNNING", "COMPLETED", "RETRYING", "FAILED"] },
+        "attemptNumber": { "type": "integer" },
+        "message": { "type": "string" },
+        "cpuPercent": { "type": "number" },
+        "memoryMb": { "type": "integer" },
+        "bitrateKbps": { "type": "integer" },
+        "droppedFrames": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "scheduleId", "jobType", "status", "attemptNumber",
+        "message", "cpuPercent", "memoryMb", "bitrateKbps", "droppedFrames",
+        "createdAt", "updatedAt"
+      ]
+    },
+    "SmartNotification": {
+      "title": "SmartNotification",
+      "description": "In-app and push notification log for uploads, broadcasts, and alerts.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "eventType": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "severity": { "type": "string", "enum": ["INFO", "SUCCESS", "WARNING", "ERROR"] },
+        "readState": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "eventType", "title", "body", "severity",
+        "readState", "createdAt", "updatedAt"
+      ]
+    },
+    "SecurityAuditLog": {
+      "title": "SecurityAuditLog",
+      "description": "Immutable security and session audit event.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "eventType": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "status": { "type": "string" },
+        "details": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "eventType", "deviceName", "status", "details", "createdAt"]
+    },
+    "BackupRecord": {
+      "title": "BackupRecord",
+      "description": "Metadata and schedule backup snapshot record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "label": { "type": "string" },
+        "videoCount": { "type": "integer" },
+        "scheduleCount": { "type": "integer" },
+        "playlistCount": { "type": "integer" },
+        "retentionDays": { "type": "integer" },
+        "snapshotSummary": { "type": "string" },
+        "settingsJson": { "type": "string" },
+        "schedulesJson": { "type": "string" },
+        "checksumSha256": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "label", "videoCount", "scheduleCount",
+        "playlistCount", "retentionDays", "snapshotSummary", "createdAt"
+      ]
+    },
+    "UploadSchedule": {
+      "title": "UploadSchedule",
+      "description": "Scheduled automatic YouTube video upload.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "channelId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "privacyStatus": { "type": "string", "enum": ["PUBLIC", "UNLISTED", "PRIVATE"] },
+        "tags": { "type": "array" },
+        "localUri": { "type": "string" },
+        "scheduledPublishIso": { "type": "string" },
+        "scheduledPublishEpochMs": { "type": "integer" },
+        "timezone": { "type": "string" },
+        "status": { "type": "string", "enum": ["SCHEDULED", "UPLOADING", "PUBLISHED", "FAILED", "CANCELLED"] },
+        "youtubeVideoId": { "type": "string" },
+        "lastError": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "channelId", "title", "description", "categoryId",
+        "privacyStatus", "scheduledPublishIso", "scheduledPublishEpochMs",
+        "timezone", "status", "createdAt", "updatedAt"
+      ]
+    },
+    "TeamMember": {
+      "title": "TeamMember",
+      "description": "Authorized team member with Owner, Editor, or Viewer permissions.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "memberName": { "type": "string" },
+        "memberEmail": { "type": "string" },
+        "role": { "type": "string", "enum": ["OWNER", "EDITOR", "VIEWER"] },
+        "activeMember": { "type": "boolean" },
+        "addedBy": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "memberName", "memberEmail", "role",
+        "activeMember", "addedBy", "createdAt", "updatedAt"
+      ]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Immutable creator and team activity history.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "category": { "type": "string", "enum": ["AUTH", "UPLOAD", "LIVE", "ACCOUNT", "TEAM", "MEDIA", "BACKUP", "SECURITY", "CLOUD", "COPYRIGHT"] },
+        "action": { "type": "string" },
+        "actorName": { "type": "string" },
+        "actorRole": { "type": "string" },
+        "details": { "type": "string" },
+        "timestampEpochMs": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "category", "action", "actorName",
+        "actorRole", "details", "timestampEpochMs", "createdAt"
+      ]
+    },
+    "CompetitorChannel": {
+      "title": "CompetitorChannel",
+      "description": "Tracked public competitor YouTube channel fetched via official YouTube Data API.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "channelId": { "type": "string" },
+        "title": { "type": "string" },
+        "handle": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "subscriberCount": { "type": "integer" },
+        "viewCount": { "type": "integer" },
+        "videoCount": { "type": "integer" },
+        "lastSyncedEpochMs": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "channelId", "title", "subscriberCount", "viewCount",
+        "videoCount", "lastSyncedEpochMs", "createdAt", "updatedAt"
+      ]
+    },
+    "UserSession": {
+      "title": "UserSession",
+      "description": "Active or revoked login session for Security Management.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "platform": { "type": "string" },
+        "sessionTokenHash": { "type": "string" },
+        "lastActiveEpochMs": { "type": "integer" },
+        "revoked": { "type": "boolean" },
+        "trustedDevice": { "type": "boolean" },
+        "networkHint": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "deviceName", "platform", "sessionTokenHash",
+        "lastActiveEpochMs", "revoked", "trustedDevice", "createdAt", "updatedAt"
+      ]
+    },
+    "CopyrightRiskReport": {
+      "title": "CopyrightRiskReport",
+      "description": "Immutable AI copyright and YouTube policy pre-flight risk scan.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "videoId": { "type": "string" },
+        "videoTitle": { "type": "string" },
+        "riskLevel": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH"] },
+        "summary": { "type": "string" },
+        "triggers": { "type": "array" },
+        "mitigations": { "type": "array" },
+        "policyFlags": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId", "videoId", "videoTitle", "riskLevel", "summary",
+        "triggers", "mitigations", "policyFlags", "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "Creator account settings and preferences scoped to authenticated UID."
+    },
+    "/users/{userId}/channels/{channelId}": {
+      "schema": { "$ref": "#/entities/YouTubeChannel" },
+      "description": "Authorized YouTube channels for the owner."
+    },
+    "/users/{userId}/videos/{videoId}": {
+      "schema": { "$ref": "#/entities/CloudVideo" },
+      "description": "Cloud Video Library metadata and source quality verification."
+    },
+    "/users/{userId}/schedules/{scheduleId}": {
+      "schema": { "$ref": "#/entities/LiveSchedule" },
+      "description": "Scheduled and active 1080p YouTube Live broadcasts."
+    },
+    "/users/{userId}/playlists/{playlistId}": {
+      "schema": { "$ref": "#/entities/LivePlaylist" },
+      "description": "Sequential live broadcast playlists."
+    },
+    "/users/{userId}/jobs/{jobId}": {
+      "schema": { "$ref": "#/entities/WorkerJob" },
+      "description": "Cloud streaming worker jobs, health metrics, and recovery history."
+    },
+    "/users/{userId}/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/SmartNotification" },
+      "description": "Smart creator notifications."
+    },
+    "/users/{userId}/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/SecurityAuditLog" },
+      "description": "Immutable security audit trail."
+    },
+    "/users/{userId}/backups/{backupId}": {
+      "schema": { "$ref": "#/entities/BackupRecord" },
+      "description": "Metadata and schedule backup history."
+    },
+    "/users/{userId}/uploadSchedules/{uploadId}": {
+      "schema": { "$ref": "#/entities/UploadSchedule" },
+      "description": "Automatic scheduled video uploads."
+    },
+    "/users/{userId}/teamMembers/{memberId}": {
+      "schema": { "$ref": "#/entities/TeamMember" },
+      "description": "Authorized team members and role permissions."
+    },
+    "/users/{userId}/activityLogs/{logId}": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Comprehensive creator & team activity log."
+    },
+    "/users/{userId}/competitors/{competitorId}": {
+      "schema": { "$ref": "#/entities/CompetitorChannel" },
+      "description": "Tracked public competitor YouTube channels."
+    },
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/UserSession" },
+      "description": "Active and historical login sessions."
+    },
+    "/users/{userId}/copyrightReports/{reportId}": {
+      "schema": { "$ref": "#/entities/CopyrightRiskReport" },
+      "description": "AI copyright risk and policy compliance scans."
+    }
+  }
+}

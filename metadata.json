@@ -1,0 +1,6 @@
+{
+  "name": "DREAMIIT28",
+  "description": "YouTube Creator Automation Platform by Harsh Singh with 1080p cloud live streaming, scheduler, analytics, and AI studio.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
